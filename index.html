@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16202C">
+<title>Daily Ledger</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{
+    --navy:#16202C;
+    --surface:#1E2A38;
+    --surface-2:#243245;
+    --line:#32414f;
+    --brass:#C99A4B;
+    --parchment:#EDE6D6;
+    --muted:#8B97A3;
+    --sage:#7C9885;
+    --slate:#5B86A5;
+    --ember:#B5563C;
+    --font-display: ui-monospace, "SFMono-Regular", "JetBrains Mono", "Courier New", monospace;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --radius: 14px;
+    color-scheme: dark;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ margin:0; padding:0; height:100%; }
+  body{
+    background: var(--navy);
+    color: var(--parchment);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  #app{
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display:flex;
+    flex-direction:column;
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+  .topbar{
+    padding: 20px 18px 8px;
+  }
+  .brand{
+    font-family: var(--font-display);
+    letter-spacing: 0.14em;
+    font-size: 13px;
+    color: var(--brass);
+    text-transform: uppercase;
+    margin: 0 0 2px;
+  }
+  .brand-sub{
+    margin:0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  main{ flex:1; padding: 6px 18px 18px; }
+  .view{ display:none; }
+  .view.active{ display:block; animation: fade .18s ease; }
+  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+  /* ---- date nav ---- */
+  .date-nav{
+    display:flex; align-items:center; justify-content:space-between;
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 10px 8px;
+    margin: 10px 0 16px;
+  }
+  .date-nav button{
+    width:40px; height:40px; border-radius:10px; border:none;
+    background: var(--surface-2); color: var(--parchment);
+    font-size:18px; display:flex; align-items:center; justify-content:center;
+  }
+  .date-nav button:disabled{ opacity:0.3; }
+  .date-label{
+    font-family: var(--font-display);
+    font-size: 14px;
+    text-align:center;
+    background:none; border:none; color:var(--parchment);
+    padding:6px 4px;
+    flex:1;
+    min-width:0;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .date-label .dow{ color: var(--muted); font-size:11px; letter-spacing:0.04em; margin-right:7px; }
+  #datePicker{ position:absolute; opacity:0; width:0; height:0; pointer-events:none; }
+
+  /* ---- habit rows ---- */
+  .habit-row{
+    background: var(--surface);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    overflow:hidden;
+  }
+  .habit-row-main{
+    display:flex; align-items:center; gap:12px;
+    padding: 14px 14px;
+  }
+  .stamp{
+    width:34px; height:34px; border-radius:50%;
+    border:2.5px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    transition: border-color .15s, background-color .15s, transform .15s;
+  }
+  .stamp svg{ opacity:0; transform: scale(.6) rotate(-8deg); transition: opacity .15s, transform .15s; }
+  input.toggle{ position:absolute; opacity:0; width:0; height:0; }
+  input.toggle:checked + label .stamp{ background: var(--habit-color); border-color: var(--habit-color); }
+  input.toggle:checked + label .stamp svg{ opacity:1; transform: scale(1) rotate(-6deg); }
+  .habit-row-main label.tap{ display:flex; align-items:center; gap:12px; flex:1; cursor:pointer; }
+  .habit-name{ font-size:15.5px; flex:1; }
+  .note-btn{
+    width:34px; height:34px; border-radius:10px; border:none;
+    background:transparent; color:var(--muted); font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .note-btn.has-note{ color: var(--habit-color); }
+  .note-area{ display:none; padding: 0 14px 14px; }
+  .note-area.open{ display:block; }
+  .note-area textarea{
+    width:100%; resize:vertical; min-height:44px;
+    background: var(--surface-2); border:1px solid var(--line); border-radius:10px;
+    color: var(--parchment); font-family: var(--font-body); font-size:13.5px;
+    padding:10px; line-height:1.4;
+  }
+
+  /* ---- tabbar ---- */
+  .tabbar{
+    position:fixed; bottom:0; left:0; right:0;
+    display:flex; justify-content:center;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+    z-index:10;
+  }
+  .tabbar-inner{ display:flex; gap:6px; max-width:480px; width:100%; padding:0 18px; }
+  .tab-btn{
+    flex:1; border:none; background:transparent; color:var(--muted);
+    font-family: var(--font-display); font-size:12px; letter-spacing:0.08em; text-transform:uppercase;
+    padding:10px 0; border-radius:10px;
+  }
+  .tab-btn.active{ background: var(--surface-2); color: var(--brass); }
+
+  /* ---- ledger view ---- */
+  h2.section-title{
+    font-family: var(--font-display); font-size:12px; letter-spacing:0.1em;
+    text-transform:uppercase; color:var(--muted); margin: 22px 0 10px;
+  }
+  .habit-select{
+    display:flex; gap:6px; overflow-x:auto; padding-bottom:4px;
+  }
+  .chip{
+    flex:0 0 auto; border:1.5px solid var(--line); background:var(--surface);
+    color:var(--muted); padding:8px 13px; border-radius:999px; font-size:13px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .chip .dot{ width:8px; height:8px; border-radius:50%; }
+  .chip.active{ border-color: var(--chip-color); color: var(--parchment); background: var(--surface-2); }
+
+  .card{ background: var(--surface); border-radius: var(--radius); padding:16px; margin-top:12px; }
+
+  .heatmap{
+    display:grid;
+    grid-template-rows: repeat(7, 13px);
+    grid-auto-flow: column;
+    grid-auto-columns: 13px;
+    gap:3px;
+    overflow-x:auto;
+    padding: 4px 2px 8px;
+  }
+  .heat-cell{
+    width:13px; height:13px; border-radius:3px;
+    background: var(--surface-2); border:1px solid var(--line);
+  }
+  .heat-cell.today{ box-shadow: 0 0 0 1.5px var(--brass) inset; }
+  .heat-cell.future{ visibility:hidden; }
+
+  .stats-row{ display:flex; gap:10px; margin-top:4px; }
+  .stat{ flex:1; background: var(--surface-2); border-radius:10px; padding:12px; text-align:center; }
+  .stat .num{ font-family: var(--font-display); font-size:24px; color: var(--chip-color, var(--brass)); }
+  .stat .lbl{ font-size:11px; color:var(--muted); margin-top:2px; }
+
+  .legend{ display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:10px; }
+  .legend-item{ display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+  .legend-item .dot{ width:9px; height:9px; border-radius:50%; }
+
+  .actions-row{ display:flex; gap:10px; margin-top:14px; }
+  .btn{
+    flex:1; border:none; border-radius:10px; padding:12px; font-size:13.5px;
+    background: var(--surface-2); color: var(--parchment); font-family: var(--font-body);
+  }
+  .btn.primary{ background: var(--brass); color: var(--navy); font-weight:600; }
+
+  .empty-state{ text-align:center; padding: 30px 10px; color: var(--muted); }
+  .empty-state .stamp{ margin: 0 auto 14px; width:56px; height:56px; border-color:var(--line); }
+  .empty-state p{ font-size:13.5px; line-height:1.5; margin: 0 0 16px; }
+
+  .toast{
+    position:fixed; left:50%; bottom: calc(80px + env(safe-area-inset-bottom));
+    transform: translateX(-50%) translateY(10px);
+    background: var(--brass); color: var(--navy); font-weight:600;
+    padding:10px 18px; border-radius:999px; font-size:13px;
+    opacity:0; pointer-events:none; transition: opacity .2s, transform .2s;
+    z-index: 20; white-space:nowrap;
+  }
+  .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+  #importFile{ display:none; }
+
+  :focus-visible{ outline: 2px solid var(--brass); outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <p class="brand">Daily Ledger</p>
+    <p class="brand-sub">Four things worth doing. One honest record.</p>
+  </div>
+
+  <main>
+    <!-- LOG VIEW -->
+    <section id="view-log" class="view active">
+      <div class="date-nav">
+        <button id="prevDay" aria-label="Previous day">‹</button>
+        <button class="date-label" id="dateLabel" aria-label="Pick a date"></button>
+        <button id="nextDay" aria-label="Next day">›</button>
+        <input type="date" id="datePicker">
+      </div>
+      <div id="habitList"></div>
+    </section>
+
+    <!-- LEDGER VIEW -->
+    <section id="view-ledger" class="view">
+      <div id="ledgerEmpty" class="empty-state" style="display:none">
+        <div class="stamp"></div>
+        <p>Your ledger is empty.<br>Log today's first entries to begin.</p>
+        <button class="btn primary" id="goLogBtn" style="flex:none; padding:12px 22px;">Go to Log</button>
+      </div>
+
+      <div id="ledgerContent" style="display:none">
+        <h2 class="section-title">Heatmap</h2>
+        <div class="habit-select" id="habitChips"></div>
+
+        <div class="card">
+          <div class="heatmap" id="heatmap"></div>
+          <div class="stats-row">
+            <div class="stat"><div class="num" id="curStreak">0</div><div class="lbl">current streak</div></div>
+            <div class="stat"><div class="num" id="bestStreak">0</div><div class="lbl">best streak</div></div>
+            <div class="stat"><div class="num" id="totalCount">0</div><div class="lbl">total days</div></div>
+          </div>
+        </div>
+
+        <h2 class="section-title">Compare over time</h2>
+        <div class="card">
+          <div id="chartHolder"></div>
+          <div class="legend" id="chartLegend"></div>
+        </div>
+
+        <h2 class="section-title">Backup</h2>
+        <div class="card">
+          <div class="actions-row">
+            <button class="btn" id="exportBtn">Export JSON</button>
+            <button class="btn" id="importBtn">Import JSON</button>
+          </div>
+          <input type="file" id="importFile" accept="application/json">
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <div class="tabbar-inner">
+      <button class="tab-btn active" data-tab="log">Log</button>
+      <button class="tab-btn" data-tab="ledger">Ledger</button>
+    </div>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- config ---------------- */
+  var HABITS = [
+    { id:"workout",     name:"Worked out",            color:"#C99A4B" },
+    { id:"fun",         name:"Something fun",         color:"#7C9885" },
+    { id:"sideproject", name:"Side project",          color:"#5B86A5" },
+    { id:"friend",      name:"Connected w/ friend",   color:"#B5563C" }
+  ];
+  var STORAGE_KEY = "dailyLedgerData_v1";
+
+  /* ---------------- storage (with in-memory fallback) ---------------- */
+  var memoryFallback = null;
+  function defaultData(){ return { entries: {} }; }
+
+  function loadData(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+      var fresh = defaultData();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+      return fresh;
+    }catch(e){
+      if (!memoryFallback) memoryFallback = defaultData();
+      return memoryFallback;
+    }
+  }
+  function saveData(data){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }catch(e){
+      memoryFallback = data;
+    }
+  }
+
+  /* ---------------- date helpers ---------------- */
+  function pad(n){ return n<10 ? "0"+n : ""+n; }
+  function toDateStr(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function fromDateStr(s){ var p=s.split("-"); return new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10)); }
+  function todayStr(){ return toDateStr(new Date()); }
+  var DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  var MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function formatLabel(d){
+    return { dow: DOW[d.getDay()], main: MON[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear() };
+  }
+
+  /* ---------------- state ---------------- */
+  var state = {
+    currentDate: todayStr(),
+    activeTab: "log",
+    selectedHabit: HABITS[0].id
+  };
+
+  /* ---------------- entry helpers ---------------- */
+  function getEntry(date, habitId){
+    var data = loadData();
+    return (data.entries[date] && data.entries[date][habitId]) || { done:false, note:"" };
+  }
+  function setDone(date, habitId, done){
+    var data = loadData();
+    if (!data.entries[date]) data.entries[date] = {};
+    if (!data.entries[date][habitId]) data.entries[date][habitId] = { done:false, note:"" };
+    data.entries[date][habitId].done = done;
+    saveData(data);
+  }
+  function setNote(date, habitId, note){
+    var data = loadData();
+    if (!data.entries[date]) data.entries[date] = {};
+    if (!data.entries[date][habitId]) data.entries[date][habitId] = { done:false, note:"" };
+    data.entries[date][habitId].note = note;
+    saveData(data);
+  }
+
+  /* ---------------- toast ---------------- */
+  var toastTimer;
+  function showToast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 1800);
+  }
+
+  /* ---------------- LOG VIEW ---------------- */
+  function renderLogView(){
+    var d = fromDateStr(state.currentDate);
+    var lbl = formatLabel(d);
+    document.getElementById("dateLabel").innerHTML = '<span class="dow">'+lbl.dow+'</span>'+lbl.main;
+    document.getElementById("nextDay").disabled = (state.currentDate >= todayStr());
+    document.getElementById("datePicker").value = state.currentDate;
+
+    var list = document.getElementById("habitList");
+    list.innerHTML = "";
+    HABITS.forEach(function(h){
+      var entry = getEntry(state.currentDate, h.id);
+      var row = document.createElement("div");
+      row.className = "habit-row";
+      var checkboxId = "chk-"+h.id;
+      row.innerHTML =
+        '<div class="habit-row-main" style="--habit-color:'+h.color+'">' +
+          '<input type="checkbox" class="toggle" id="'+checkboxId+'" '+(entry.done?"checked":"")+'>' +
+          '<label class="tap" for="'+checkboxId+'">' +
+            '<span class="stamp"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 8.5L6 12.5L14 3.5" stroke="'+ "#16202C" +'" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+            '<span class="habit-name">'+h.name+'</span>' +
+          '</label>' +
+          '<button class="note-btn'+(entry.note?" has-note":"")+'" style="--habit-color:'+h.color+'" data-habit="'+h.id+'" aria-label="Note for '+h.name+'">&#9998;</button>' +
+        '</div>' +
+        '<div class="note-area" id="note-'+h.id+'">' +
+          '<textarea placeholder="Add a note (optional)" data-habit="'+h.id+'">'+(entry.note||"")+'</textarea>' +
+        '</div>';
+      list.appendChild(row);
+
+      var checkbox = row.querySelector("#"+checkboxId);
+      checkbox.addEventListener("change", function(){
+        setDone(state.currentDate, h.id, checkbox.checked);
+      });
+
+      var noteBtn = row.querySelector(".note-btn");
+      var noteArea = row.querySelector("#note-"+h.id);
+      noteBtn.addEventListener("click", function(){
+        noteArea.classList.toggle("open");
+        if (noteArea.classList.contains("open")) noteArea.querySelector("textarea").focus();
+      });
+      if (entry.note) noteArea.classList.add("open");
+
+      var textarea = row.querySelector("textarea");
+      textarea.addEventListener("blur", function(){
+        setNote(state.currentDate, h.id, textarea.value.trim());
+        noteBtn.classList.toggle("has-note", !!textarea.value.trim());
+      });
+    });
+  }
+
+  document.getElementById("prevDay").addEventListener("click", function(){
+    var d = fromDateStr(state.currentDate);
+    d.setDate(d.getDate()-1);
+    state.currentDate = toDateStr(d);
+    renderLogView();
+  });
+  document.getElementById("nextDay").addEventListener("click", function(){
+    if (state.currentDate >= todayStr()) return;
+    var d = fromDateStr(state.currentDate);
+    d.setDate(d.getDate()+1);
+    state.currentDate = toDateStr(d);
+    renderLogView();
+  });
+  document.getElementById("dateLabel").addEventListener("click", function(){
+    document.getElementById("datePicker").showPicker ? document.getElementById("datePicker").showPicker() : document.getElementById("datePicker").click();
+  });
+  document.getElementById("datePicker").addEventListener("change", function(e){
+    if (e.target.value) {
+      state.currentDate = e.target.value;
+      renderLogView();
+    }
+  });
+
+  /* ---------------- LEDGER VIEW ---------------- */
+  function hasAnyEntries(data){
+    return Object.keys(data.entries).some(function(date){
+      var day = data.entries[date];
+      return HABITS.some(function(h){ return day[h.id] && day[h.id].done; });
+    });
+  }
+
+  function renderHabitChips(){
+    var wrap = document.getElementById("habitChips");
+    wrap.innerHTML = "";
+    HABITS.forEach(function(h){
+      var chip = document.createElement("button");
+      chip.className = "chip" + (state.selectedHabit===h.id ? " active":"");
+      chip.style.setProperty("--chip-color", h.color);
+      chip.innerHTML = '<span class="dot" style="background:'+h.color+'"></span>'+h.name;
+      chip.addEventListener("click", function(){
+        state.selectedHabit = h.id;
+        renderLedgerView();
+      });
+      wrap.appendChild(chip);
+    });
+  }
+
+  function renderHeatmap(habitId){
+    var data = loadData();
+    var habit = HABITS.filter(function(h){return h.id===habitId;})[0];
+    var weeksBack = 14;
+    var today = new Date(); today.setHours(0,0,0,0);
+    var start = new Date(today);
+    start.setDate(start.getDate() - (weeksBack*7 - 1));
+    // snap back to the most recent Sunday on/before start
+    start.setDate(start.getDate() - start.getDay());
+
+    var el = document.getElementById("heatmap");
+    el.innerHTML = "";
+    var cursor = new Date(start);
+    var todayStrVal = todayStr();
+    while (cursor <= today || cursor.getDay() !== 0){
+      var ds = toDateStr(cursor);
+      var cell = document.createElement("div");
+      if (cursor > today){
+        cell.className = "heat-cell future";
+      } else {
+        var entry = (data.entries[ds] && data.entries[ds][habitId]) || null;
+        cell.className = "heat-cell" + (ds===todayStrVal ? " today":"");
+        cell.title = ds + (entry && entry.done ? " — done" : "");
+        if (entry && entry.done){
+          cell.style.background = habit.color;
+          cell.style.borderColor = habit.color;
+        }
+        cell.addEventListener("click", function(dateForCell){
+          return function(){
+            state.currentDate = dateForCell;
+            switchTab("log");
+          };
+        }(ds));
+      }
+      el.appendChild(cell);
+      cursor.setDate(cursor.getDate()+1);
+      if (cursor > today && cursor.getDay()===0) break;
+    }
+  }
+
+  function currentStreak(habitId, data){
+    var streak = 0;
+    var d = new Date(); d.setHours(0,0,0,0);
+    while (true){
+      var ds = toDateStr(d);
+      var e = data.entries[ds] && data.entries[ds][habitId];
+      if (e && e.done){ streak++; d.setDate(d.getDate()-1); } else break;
+    }
+    return streak;
+  }
+  function bestStreakAndTotal(habitId, data){
+    var doneDates = Object.keys(data.entries).filter(function(ds){
+      return data.entries[ds][habitId] && data.entries[ds][habitId].done;
+    }).sort();
+    if (!doneDates.length) return { best:0, total:0 };
+    var best=1, run=1;
+    for (var i=1;i<doneDates.length;i++){
+      var diff = Math.round((fromDateStr(doneDates[i]) - fromDateStr(doneDates[i-1])) / 86400000);
+      if (diff===1){ run++; if (run>best) best=run; } else { run=1; }
+    }
+    return { best: best, total: doneDates.length };
+  }
+
+  function renderStats(habitId){
+    var data = loadData();
+    document.getElementById("curStreak").textContent = currentStreak(habitId, data);
+    var bt = bestStreakAndTotal(habitId, data);
+    document.getElementById("bestStreak").textContent = bt.best;
+    document.getElementById("totalCount").textContent = bt.total;
+    var habit = HABITS.filter(function(h){return h.id===habitId;})[0];
+    [].forEach.call(document.querySelectorAll(".stat .num"), function(n){
+      n.style.setProperty("--chip-color", habit.color);
+    });
+  }
+
+  function renderChart(){
+    var data = loadData();
+    var allDateKeys = Object.keys(data.entries).sort();
+    var holder = document.getElementById("chartHolder");
+    if (!allDateKeys.length){
+      holder.innerHTML = '<p style="color:var(--muted); font-size:13px; margin:6px 0;">No data yet.</p>';
+      document.getElementById("chartLegend").innerHTML = "";
+      return;
+    }
+    var firstDate = fromDateStr(allDateKeys[0]);
+    var today = new Date(); today.setHours(0,0,0,0);
+    var dates = [];
+    var cursor = new Date(firstDate);
+    while (cursor <= today){ dates.push(toDateStr(cursor)); cursor.setDate(cursor.getDate()+1); }
+
+    var width = Math.max(280, holder.clientWidth || 280);
+    var height = 170;
+    var padL = 26, padR = 8, padT = 10, padB = 18;
+    var plotW = width - padL - padR;
+    var plotH = height - padT - padB;
+
+    var series = {};
+    var running = {};
+    HABITS.forEach(function(h){ series[h.id]=[]; running[h.id]=0; });
+    dates.forEach(function(ds){
+      var day = data.entries[ds];
+      HABITS.forEach(function(h){
+        if (day && day[h.id] && day[h.id].done) running[h.id]++;
+        series[h.id].push(running[h.id]);
+      });
+    });
+    var maxVal = 1;
+    HABITS.forEach(function(h){
+      var last = series[h.id][series[h.id].length-1];
+      if (last > maxVal) maxVal = last;
+    });
+
+    function xScale(i){ return padL + (dates.length<=1 ? 0 : (i/(dates.length-1))*plotW); }
+    function yScale(v){ return padT + plotH - (v/maxVal)*plotH; }
+
+    var svg = '<svg viewBox="0 0 '+width+' '+height+'" width="100%" height="'+height+'" preserveAspectRatio="none">';
+    svg += '<line x1="'+padL+'" y1="'+padT+'" x2="'+padL+'" y2="'+(height-padB)+'" stroke="#32414f" stroke-width="1"/>';
+    svg += '<line x1="'+padL+'" y1="'+(height-padB)+'" x2="'+(width-padR)+'" y2="'+(height-padB)+'" stroke="#32414f" stroke-width="1"/>';
+    HABITS.forEach(function(h){
+      var pts = series[h.id].map(function(v,i){ return xScale(i).toFixed(1)+","+yScale(v).toFixed(1); }).join(" ");
+      svg += '<polyline points="'+pts+'" fill="none" stroke="'+h.color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+    });
+    svg += '<text x="'+(padL-4)+'" y="'+(padT+8)+'" font-size="9" fill="#8B97A3" text-anchor="end" font-family="ui-monospace,monospace">'+maxVal+'</text>';
+    svg += '<text x="'+(padL-4)+'" y="'+(height-padB)+'" font-size="9" fill="#8B97A3" text-anchor="end" font-family="ui-monospace,monospace">0</text>';
+    svg += '</svg>';
+    holder.innerHTML = svg;
+
+    var legend = document.getElementById("chartLegend");
+    legend.innerHTML = HABITS.map(function(h){
+      return '<span class="legend-item"><span class="dot" style="background:'+h.color+'"></span>'+h.name+' ('+series[h.id][series[h.id].length-1]+')</span>';
+    }).join("");
+  }
+
+  function renderLedgerView(){
+    var data = loadData();
+    var empty = !hasAnyEntries(data);
+    document.getElementById("ledgerEmpty").style.display = empty ? "block" : "none";
+    document.getElementById("ledgerContent").style.display = empty ? "none" : "block";
+    if (empty) return;
+    renderHabitChips();
+    renderHeatmap(state.selectedHabit);
+    renderStats(state.selectedHabit);
+    renderChart();
+  }
+
+  document.getElementById("goLogBtn").addEventListener("click", function(){ switchTab("log"); });
+
+  /* ---------------- tabs ---------------- */
+  function switchTab(tab){
+    state.activeTab = tab;
+    document.getElementById("view-log").classList.toggle("active", tab==="log");
+    document.getElementById("view-ledger").classList.toggle("active", tab==="ledger");
+    [].forEach.call(document.querySelectorAll(".tab-btn"), function(b){
+      b.classList.toggle("active", b.dataset.tab===tab);
+    });
+    if (tab==="log") renderLogView();
+    if (tab==="ledger") renderLedgerView();
+  }
+  [].forEach.call(document.querySelectorAll(".tab-btn"), function(b){
+    b.addEventListener("click", function(){ switchTab(b.dataset.tab); });
+  });
+
+  /* ---------------- export / import ---------------- */
+  document.getElementById("exportBtn").addEventListener("click", function(){
+    var data = loadData();
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "daily-ledger-export-" + todayStr() + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("Exported");
+  });
+  document.getElementById("importBtn").addEventListener("click", function(){
+    document.getElementById("importFile").click();
+  });
+  document.getElementById("importFile").addEventListener("change", function(e){
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var imported = JSON.parse(reader.result);
+        if (!imported || typeof imported.entries !== "object") throw new Error("bad format");
+        var data = loadData();
+        var count = 0;
+        Object.keys(imported.entries).forEach(function(ds){
+          data.entries[ds] = imported.entries[ds];
+          count++;
+        });
+        saveData(data);
+        renderLedgerView();
+        renderLogView();
+        showToast("Imported " + count + " day(s)");
+      }catch(err){
+        showToast("Import failed — invalid file");
+      }
+      e.target.value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  /* ---------------- service worker ---------------- */
+  if ("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js").catch(function(){ /* offline support unavailable, app still works */ });
+    });
+  }
+
+  /* ---------------- init ---------------- */
+  renderLogView();
+})();
+</script>
+</body>
+</html>
