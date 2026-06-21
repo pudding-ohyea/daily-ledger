@@ -165,6 +165,21 @@
   }
   .chip .dot{ width:8px; height:8px; border-radius:50%; }
   .chip.active{ border-color: var(--chip-color); color: var(--parchment); background: var(--surface-2); }
+  .chip.wide{ grid-column: 1 / -1; justify-content:center; }
+  .mini-dots{ display:flex; gap:3px; }
+  .mini-dots span{ width:6px; height:6px; border-radius:50%; display:block; }
+
+  .rating-card{ background: var(--surface); border-radius: var(--radius); padding:14px; margin: 4px 0 14px; }
+  .rating-card .rating-label{
+    font-size:11px; color:var(--muted); margin:0 0 10px;
+    font-family:var(--font-display); letter-spacing:0.08em; text-transform:uppercase;
+  }
+  .rating-options{ display:grid; grid-template-columns: repeat(4,1fr); gap:7px; }
+  .rating-pill{
+    border:1.5px solid var(--level-color); background:transparent; color:var(--level-color);
+    padding:10px 2px; border-radius:10px; font-size:12px; text-align:center; font-family:var(--font-body);
+  }
+  .rating-pill.active{ background:var(--level-color); color:var(--navy); font-weight:700; }
 
   .card{ background: var(--surface); border-radius: var(--radius); padding:16px; margin-top:12px; }
 
@@ -246,6 +261,11 @@
         <input type="date" id="datePicker">
       </div>
       <div id="habitList"></div>
+
+      <div class="rating-card">
+        <p class="rating-label">How was the day?</p>
+        <div class="rating-options" id="ratingOptions"></div>
+      </div>
     </section>
 
     <!-- LEDGER VIEW -->
@@ -307,6 +327,12 @@
     { id:"fun",         name:"Something fun",         color:"#7C9885" },
     { id:"sideproject", name:"Side project",          color:"#5B86A5" },
     { id:"friend",      name:"Connected w/ friend",   color:"#B5563C" }
+  ];
+  var RATING_LEVELS = [
+    { id:"bad",   name:"Bad",   color:"#B5563C" },
+    { id:"okay",  name:"Okay",  color:"#5B86A5" },
+    { id:"good",  name:"Good",  color:"#7C9885" },
+    { id:"great", name:"Great", color:"#C99A4B" }
   ];
   var STORAGE_KEY = "dailyLedgerData_v1";
 
@@ -371,6 +397,17 @@
     data.entries[date][habitId].note = note;
     saveData(data);
   }
+  function getRating(date){
+    var data = loadData();
+    return (data.entries[date] && data.entries[date].rating) || null;
+  }
+  function setRating(date, ratingId){
+    var data = loadData();
+    if (!data.entries[date]) data.entries[date] = {};
+    if (ratingId){ data.entries[date].rating = ratingId; }
+    else { delete data.entries[date].rating; }
+    saveData(data);
+  }
 
   /* ---------------- toast ---------------- */
   var toastTimer;
@@ -430,6 +467,26 @@
         noteBtn.classList.toggle("has-note", !!textarea.value.trim());
       });
     });
+
+    renderRatingRow();
+  }
+
+  function renderRatingRow(){
+    var current = getRating(state.currentDate);
+    var wrap = document.getElementById("ratingOptions");
+    wrap.innerHTML = "";
+    RATING_LEVELS.forEach(function(lvl){
+      var btn = document.createElement("button");
+      btn.className = "rating-pill" + (current===lvl.id ? " active":"");
+      btn.style.setProperty("--level-color", lvl.color);
+      btn.textContent = lvl.name;
+      btn.addEventListener("click", function(){
+        var next = (current===lvl.id) ? null : lvl.id;
+        setRating(state.currentDate, next);
+        renderRatingRow();
+      });
+      wrap.appendChild(btn);
+    });
   }
 
   document.getElementById("prevDay").addEventListener("click", function(){
@@ -459,6 +516,7 @@
   function hasAnyEntries(data){
     return Object.keys(data.entries).some(function(date){
       var day = data.entries[date];
+      if (day.rating) return true;
       return HABITS.some(function(h){ return day[h.id] && day[h.id].done; });
     });
   }
@@ -477,6 +535,18 @@
       });
       wrap.appendChild(chip);
     });
+
+    var ratingChip = document.createElement("button");
+    ratingChip.className = "chip wide" + (state.selectedHabit==="__rating__" ? " active":"");
+    ratingChip.style.setProperty("--chip-color", "var(--brass)");
+    ratingChip.innerHTML = '<span class="mini-dots">' +
+      RATING_LEVELS.map(function(l){ return '<span style="background:'+l.color+'"></span>'; }).join("") +
+      '</span>&nbsp;Day Rating';
+    ratingChip.addEventListener("click", function(){
+      state.selectedHabit = "__rating__";
+      renderLedgerView();
+    });
+    wrap.appendChild(ratingChip);
   }
 
   function isoWeekNumber(date){
@@ -491,7 +561,8 @@
 
   function renderHeatmap(habitId){
     var data = loadData();
-    var habit = HABITS.filter(function(h){return h.id===habitId;})[0];
+    var isRating = (habitId === "__rating__");
+    var habit = isRating ? null : HABITS.filter(function(h){return h.id===habitId;})[0];
     var weeksBack = 14;
     var today = new Date(); today.setHours(0,0,0,0);
     var todayDow = (today.getDay() + 6) % 7; // Mon=0..Sun=6
@@ -519,12 +590,19 @@
         if (d > today){
           cell.className = "heat-cell future";
         } else {
-          var entry = (data.entries[ds] && data.entries[ds][habitId]) || null;
           cell.className = "heat-cell" + (ds===todayStrVal ? " today":"");
-          cell.title = ds + (entry && entry.done ? " — done" : "");
-          if (entry && entry.done){
-            cell.style.background = habit.color;
-            cell.style.borderColor = habit.color;
+          if (isRating){
+            var ratingVal = data.entries[ds] && data.entries[ds].rating;
+            var lvl = ratingVal ? RATING_LEVELS.filter(function(l){return l.id===ratingVal;})[0] : null;
+            cell.title = ds + (lvl ? " — "+lvl.name : "");
+            if (lvl){ cell.style.background = lvl.color; cell.style.borderColor = lvl.color; }
+          } else {
+            var entry = (data.entries[ds] && data.entries[ds][habitId]) || null;
+            cell.title = ds + (entry && entry.done ? " — done" : "");
+            if (entry && entry.done){
+              cell.style.background = habit.color;
+              cell.style.borderColor = habit.color;
+            }
           }
           cell.addEventListener("click", function(dateForCell){
             return function(){
@@ -562,15 +640,46 @@
     return { best: best, total: doneDates.length };
   }
 
+  function currentRatingStreak(data){
+    var streak = 0;
+    var d = new Date(); d.setHours(0,0,0,0);
+    while (true){
+      var ds = toDateStr(d);
+      if (data.entries[ds] && data.entries[ds].rating){ streak++; d.setDate(d.getDate()-1); } else break;
+    }
+    return streak;
+  }
+  function bestRatingStreakAndTotal(data){
+    var ratedDates = Object.keys(data.entries).filter(function(ds){
+      return !!(data.entries[ds] && data.entries[ds].rating);
+    }).sort();
+    if (!ratedDates.length) return { best:0, total:0 };
+    var best=1, run=1;
+    for (var i=1;i<ratedDates.length;i++){
+      var diff = Math.round((fromDateStr(ratedDates[i]) - fromDateStr(ratedDates[i-1])) / 86400000);
+      if (diff===1){ run++; if (run>best) best=run; } else { run=1; }
+    }
+    return { best: best, total: ratedDates.length };
+  }
+
   function renderStats(habitId){
     var data = loadData();
-    document.getElementById("curStreak").textContent = currentStreak(habitId, data);
-    var bt = bestStreakAndTotal(habitId, data);
+    var isRating = (habitId === "__rating__");
+    var cur, bt, color;
+    if (isRating){
+      cur = currentRatingStreak(data);
+      bt = bestRatingStreakAndTotal(data);
+      color = "var(--brass)";
+    } else {
+      cur = currentStreak(habitId, data);
+      bt = bestStreakAndTotal(habitId, data);
+      color = HABITS.filter(function(h){return h.id===habitId;})[0].color;
+    }
+    document.getElementById("curStreak").textContent = cur;
     document.getElementById("bestStreak").textContent = bt.best;
     document.getElementById("totalCount").textContent = bt.total;
-    var habit = HABITS.filter(function(h){return h.id===habitId;})[0];
     [].forEach.call(document.querySelectorAll(".stat .num"), function(n){
-      n.style.setProperty("--chip-color", habit.color);
+      n.style.setProperty("--chip-color", color);
     });
   }
 
