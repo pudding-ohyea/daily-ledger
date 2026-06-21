@@ -154,12 +154,14 @@
     text-transform:uppercase; color:var(--muted); margin: 22px 0 10px;
   }
   .habit-select{
-    display:flex; gap:6px; overflow-x:auto; padding-bottom:4px;
+    display:grid; grid-template-columns: 1fr 1fr; gap:8px;
   }
   .chip{
-    flex:0 0 auto; border:1.5px solid var(--line); background:var(--surface);
-    color:var(--muted); padding:8px 13px; border-radius:999px; font-size:13px;
+    width:100%; box-sizing:border-box;
+    border:1.5px solid var(--line); background:var(--surface);
+    color:var(--muted); padding:9px 12px; border-radius:12px; font-size:12.5px;
     display:flex; align-items:center; gap:6px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .chip .dot{ width:8px; height:8px; border-radius:50%; }
   .chip.active{ border-color: var(--chip-color); color: var(--parchment); background: var(--surface-2); }
@@ -168,12 +170,19 @@
 
   .heatmap{
     display:grid;
-    grid-template-rows: repeat(7, 13px);
+    grid-template-rows: 12px repeat(7, 13px);
     grid-auto-flow: column;
     grid-auto-columns: 13px;
     gap:3px;
     overflow-x:auto;
     padding: 4px 2px 8px;
+  }
+  .heat-week-label{
+    font-family: var(--font-display);
+    font-size: 9px;
+    line-height: 12px;
+    color: var(--muted);
+    text-align:center;
   }
   .heat-cell{
     width:13px; height:13px; border-radius:3px;
@@ -470,43 +479,63 @@
     });
   }
 
+  function isoWeekNumber(date){
+    var d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    var dayNum = (d.getUTCDay() + 6) % 7; // Mon=0..Sun=6
+    d.setUTCDate(d.getUTCDate() - dayNum + 3);
+    var firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+    var firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
+    firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
+    return 1 + Math.round((d - firstThursday) / (7*86400000));
+  }
+
   function renderHeatmap(habitId){
     var data = loadData();
     var habit = HABITS.filter(function(h){return h.id===habitId;})[0];
     var weeksBack = 14;
     var today = new Date(); today.setHours(0,0,0,0);
-    var start = new Date(today);
-    start.setDate(start.getDate() - (weeksBack*7 - 1));
-    // snap back to the most recent Sunday on/before start
-    start.setDate(start.getDate() - start.getDay());
+    var todayDow = (today.getDay() + 6) % 7; // Mon=0..Sun=6
+    var curMonday = new Date(today);
+    curMonday.setDate(curMonday.getDate() - todayDow);
+    var startMonday = new Date(curMonday);
+    startMonday.setDate(startMonday.getDate() - (weeksBack-1)*7);
 
     var el = document.getElementById("heatmap");
     el.innerHTML = "";
-    var cursor = new Date(start);
     var todayStrVal = todayStr();
-    while (cursor <= today || cursor.getDay() !== 0){
-      var ds = toDateStr(cursor);
-      var cell = document.createElement("div");
-      if (cursor > today){
-        cell.className = "heat-cell future";
-      } else {
-        var entry = (data.entries[ds] && data.entries[ds][habitId]) || null;
-        cell.className = "heat-cell" + (ds===todayStrVal ? " today":"");
-        cell.title = ds + (entry && entry.done ? " — done" : "");
-        if (entry && entry.done){
-          cell.style.background = habit.color;
-          cell.style.borderColor = habit.color;
+    var weekCursor = new Date(startMonday);
+
+    for (var w=0; w<weeksBack; w++){
+      var label = document.createElement("div");
+      label.className = "heat-week-label";
+      label.textContent = pad(isoWeekNumber(weekCursor));
+      el.appendChild(label);
+
+      for (var i=0;i<7;i++){
+        var d = new Date(weekCursor);
+        d.setDate(d.getDate()+i);
+        var ds = toDateStr(d);
+        var cell = document.createElement("div");
+        if (d > today){
+          cell.className = "heat-cell future";
+        } else {
+          var entry = (data.entries[ds] && data.entries[ds][habitId]) || null;
+          cell.className = "heat-cell" + (ds===todayStrVal ? " today":"");
+          cell.title = ds + (entry && entry.done ? " — done" : "");
+          if (entry && entry.done){
+            cell.style.background = habit.color;
+            cell.style.borderColor = habit.color;
+          }
+          cell.addEventListener("click", function(dateForCell){
+            return function(){
+              state.currentDate = dateForCell;
+              switchTab("log");
+            };
+          }(ds));
         }
-        cell.addEventListener("click", function(dateForCell){
-          return function(){
-            state.currentDate = dateForCell;
-            switchTab("log");
-          };
-        }(ds));
+        el.appendChild(cell);
       }
-      el.appendChild(cell);
-      cursor.setDate(cursor.getDate()+1);
-      if (cursor > today && cursor.getDay()===0) break;
+      weekCursor.setDate(weekCursor.getDate()+7);
     }
   }
 
