@@ -95,6 +95,7 @@
   .view{ display:none; }
   .view.active{ display:block; animation: fade .18s ease; }
   @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
   /* ---- date nav ---- */
   .date-nav{
     display:flex; align-items:center; justify-content:space-between;
@@ -123,6 +124,7 @@
   }
   .date-label .dow{ color: var(--muted); font-size:11px; letter-spacing:0.04em; margin-right:7px; }
   #datePicker{ position:absolute; opacity:0; width:0; height:0; pointer-events:none; }
+
   /* ---- habit rows ---- */
   .habit-row{
     background: var(--surface);
@@ -161,6 +163,7 @@
     color: var(--parchment); font-family: var(--font-body); font-size:13.5px;
     padding:10px; line-height:1.4;
   }
+
   /* ---- tabbar ---- */
   .tabbar{
     position:fixed; bottom:0; left:0; right:0;
@@ -177,6 +180,7 @@
     padding:10px 0; border-radius:10px;
   }
   .tab-btn.active{ background: var(--surface-2); color: var(--brass); }
+
   /* ---- ledger view ---- */
   h2.section-title{
     font-family: var(--font-display); font-size:12px; letter-spacing:0.1em;
@@ -197,6 +201,7 @@
   .chip.wide{ grid-column: 1 / -1; justify-content:center; }
   .mini-dots{ display:flex; gap:3px; }
   .mini-dots span{ width:6px; height:6px; border-radius:50%; display:block; }
+
   .rating-card{ background: var(--surface); border-radius: var(--radius); padding:14px; margin: 4px 0 14px; }
   .rating-card .rating-label{
     font-size:11px; color:var(--muted); margin:0 0 10px;
@@ -208,7 +213,17 @@
     padding:10px 2px; border-radius:10px; font-size:12px; text-align:center; font-family:var(--font-body);
   }
   .rating-pill.active{ background:var(--level-color); color:var(--navy); font-weight:700; }
+  .rating-note-wrap{ display:none; margin-top:11px; }
+  .rating-note-wrap.open{ display:block; }
+  .rating-note-wrap textarea{
+    width:100%; resize:vertical; min-height:44px; box-sizing:border-box;
+    background: var(--surface-2); border:1px solid var(--line); border-radius:10px;
+    color: var(--parchment); font-family: var(--font-body); font-size:13.5px;
+    padding:10px; line-height:1.4;
+  }
+
   .card{ background: var(--surface); border-radius: var(--radius); padding:16px; margin-top:12px; }
+
   .heatmap{
     display:grid;
     grid-template-rows: 12px repeat(7, 13px);
@@ -231,22 +246,27 @@
   }
   .heat-cell.today{ box-shadow: 0 0 0 1.5px var(--brass) inset; }
   .heat-cell.future{ visibility:hidden; }
+
   .stats-row{ display:flex; gap:10px; margin-top:4px; }
   .stat{ flex:1; background: var(--surface-2); border-radius:10px; padding:12px; text-align:center; }
   .stat .num{ font-family: var(--font-display); font-size:24px; color: var(--chip-color, var(--brass)); }
   .stat .lbl{ font-size:11px; color:var(--muted); margin-top:2px; }
+
   .legend{ display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:10px; }
   .legend-item{ display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
   .legend-item .dot{ width:9px; height:9px; border-radius:50%; }
+
   .actions-row{ display:flex; gap:10px; margin-top:14px; }
   .btn{
     flex:1; border:none; border-radius:10px; padding:12px; font-size:13.5px;
     background: var(--surface-2); color: var(--parchment); font-family: var(--font-body);
   }
   .btn.primary{ background: var(--brass); color: var(--navy); font-weight:600; }
+
   .empty-state{ text-align:center; padding: 30px 10px; color: var(--muted); }
   .empty-state .stamp{ margin: 0 auto 14px; width:56px; height:56px; border-color:var(--line); }
   .empty-state p{ font-size:13.5px; line-height:1.5; margin: 0 0 16px; }
+
   .toast{
     position:fixed; left:50%; bottom: calc(80px + env(safe-area-inset-bottom));
     transform: translateX(-50%) translateY(10px);
@@ -256,7 +276,9 @@
     z-index: 20; white-space:nowrap;
   }
   .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
   #importFile{ display:none; }
+
   :focus-visible{ outline: 2px solid var(--brass); outline-offset:2px; }
   @media (prefers-reduced-motion: reduce){
     *{ animation:none !important; transition:none !important; }
@@ -272,6 +294,7 @@
     </div>
     <button class="icon-btn" id="settingsBtn" aria-label="Edit category names">&#9881;</button>
   </div>
+
   <div class="overlay" id="settingsOverlay">
     <div class="overlay-card">
       <div class="overlay-header">
@@ -283,6 +306,7 @@
       <button class="btn primary" id="saveSettings" style="width:100%;">Save</button>
     </div>
   </div>
+
   <main>
     <!-- LOG VIEW -->
     <section id="view-log" class="view active">
@@ -293,11 +317,16 @@
         <input type="date" id="datePicker">
       </div>
       <div id="habitList"></div>
+
       <div class="rating-card">
         <p class="rating-label">How was the day?</p>
         <div class="rating-options" id="ratingOptions"></div>
+        <div class="rating-note-wrap" id="ratingNoteWrap">
+          <textarea id="ratingNoteInput" placeholder="What made it that kind of day? (optional)"></textarea>
+        </div>
       </div>
     </section>
+
     <!-- LEDGER VIEW -->
     <section id="view-ledger" class="view">
       <div id="ledgerEmpty" class="empty-state" style="display:none">
@@ -305,9 +334,11 @@
         <p>Your ledger is empty.<br>Log today's first entries to begin.</p>
         <button class="btn primary" id="goLogBtn" style="flex:none; padding:12px 22px;">Go to Log</button>
       </div>
+
       <div id="ledgerContent" style="display:none">
         <h2 class="section-title">Heatmap</h2>
         <div class="habit-select" id="habitChips"></div>
+
         <div class="card">
           <div class="heatmap" id="heatmap"></div>
           <div class="stats-row">
@@ -316,11 +347,13 @@
             <div class="stat"><div class="num" id="totalCount">0</div><div class="lbl">total days</div></div>
           </div>
         </div>
+
         <h2 class="section-title">Compare over time</h2>
         <div class="card">
           <div id="chartHolder"></div>
           <div class="legend" id="chartLegend"></div>
         </div>
+
         <h2 class="section-title">Backup</h2>
         <div class="card">
           <div class="actions-row">
@@ -332,6 +365,7 @@
       </div>
     </section>
   </main>
+
   <nav class="tabbar">
     <div class="tabbar-inner">
       <button class="tab-btn active" data-tab="log">Log</button>
@@ -339,10 +373,13 @@
     </div>
   </nav>
 </div>
+
 <div class="toast" id="toast"></div>
+
 <script>
 (function(){
   "use strict";
+
   /* ---------------- config ---------------- */
   var DEFAULT_HABITS = [
     { id:"workout",     name:"Worked out",            color:"#C99A4B" },
@@ -352,15 +389,17 @@
   ];
   var HABITS = DEFAULT_HABITS.map(function(h){ return { id:h.id, name:h.name, color:h.color }; });
   var RATING_LEVELS = [
-    { id:"bad",   name:"Bad",   color:"#B5563C" },
-    { id:"okay",  name:"Okay",  color:"#5B86A5" },
-    { id:"good",  name:"Good",  color:"#7C9885" },
-    { id:"great", name:"Great", color:"#C99A4B" }
+    { id:"bad",   name:"Bad",   color:"#C0392B" },
+    { id:"okay",  name:"Okay",  color:"#D4A017" },
+    { id:"good",  name:"Good",  color:"#27AE60" },
+    { id:"great", name:"Great", color:"#82E0AA" }
   ];
   var STORAGE_KEY = "dailyLedgerData_v1";
+
   /* ---------------- storage (with in-memory fallback) ---------------- */
   var memoryFallback = null;
   function defaultData(){ return { entries: {} }; }
+
   function loadData(){
     try{
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -380,6 +419,7 @@
       memoryFallback = data;
     }
   }
+
   function applyCustomNames(){
     var data = loadData();
     if (data.habitNames){
@@ -388,9 +428,11 @@
       });
     }
   }
+
   function escapeHtml(s){
     return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
+
   /* ---------------- date helpers ---------------- */
   function pad(n){ return n<10 ? "0"+n : ""+n; }
   function toDateStr(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
@@ -401,12 +443,14 @@
   function formatLabel(d){
     return { dow: DOW[d.getDay()], main: MON[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear() };
   }
+
   /* ---------------- state ---------------- */
   var state = {
     currentDate: todayStr(),
     activeTab: "log",
     selectedHabit: HABITS[0].id
   };
+
   /* ---------------- entry helpers ---------------- */
   function getEntry(date, habitId){
     var data = loadData();
@@ -437,6 +481,18 @@
     else { delete data.entries[date].rating; }
     saveData(data);
   }
+  function getRatingNote(date){
+    var data = loadData();
+    return (data.entries[date] && data.entries[date].ratingNote) || "";
+  }
+  function setRatingNote(date, note){
+    var data = loadData();
+    if (!data.entries[date]) data.entries[date] = {};
+    if (note){ data.entries[date].ratingNote = note; }
+    else { delete data.entries[date].ratingNote; }
+    saveData(data);
+  }
+
   /* ---------------- toast ---------------- */
   var toastTimer;
   function showToast(msg){
@@ -446,6 +502,7 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 1800);
   }
+
   /* ---------------- LOG VIEW ---------------- */
   function renderLogView(){
     var d = fromDateStr(state.currentDate);
@@ -453,6 +510,7 @@
     document.getElementById("dateLabel").innerHTML = '<span class="dow">'+lbl.dow+'</span>'+lbl.main;
     document.getElementById("nextDay").disabled = (state.currentDate >= todayStr());
     document.getElementById("datePicker").value = state.currentDate;
+
     var list = document.getElementById("habitList");
     list.innerHTML = "";
     HABITS.forEach(function(h){
@@ -473,10 +531,12 @@
           '<textarea placeholder="Add a note (optional)" data-habit="'+h.id+'">'+(entry.note||"")+'</textarea>' +
         '</div>';
       list.appendChild(row);
+
       var checkbox = row.querySelector("#"+checkboxId);
       checkbox.addEventListener("change", function(){
         setDone(state.currentDate, h.id, checkbox.checked);
       });
+
       var noteBtn = row.querySelector(".note-btn");
       var noteArea = row.querySelector("#note-"+h.id);
       noteBtn.addEventListener("click", function(){
@@ -484,14 +544,17 @@
         if (noteArea.classList.contains("open")) noteArea.querySelector("textarea").focus();
       });
       if (entry.note) noteArea.classList.add("open");
+
       var textarea = row.querySelector("textarea");
       textarea.addEventListener("blur", function(){
         setNote(state.currentDate, h.id, textarea.value.trim());
         noteBtn.classList.toggle("has-note", !!textarea.value.trim());
       });
     });
+
     renderRatingRow();
   }
+
   function renderRatingRow(){
     var current = getRating(state.currentDate);
     var wrap = document.getElementById("ratingOptions");
@@ -508,7 +571,22 @@
       });
       wrap.appendChild(btn);
     });
+
+    var noteWrap = document.getElementById("ratingNoteWrap");
+    var noteInput = document.getElementById("ratingNoteInput");
+    if (current){
+      noteWrap.classList.add("open");
+      noteInput.value = getRatingNote(state.currentDate);
+    } else {
+      noteWrap.classList.remove("open");
+      noteInput.value = "";
+    }
   }
+
+  document.getElementById("ratingNoteInput").addEventListener("blur", function(){
+    setRatingNote(state.currentDate, this.value.trim());
+  });
+
   document.getElementById("prevDay").addEventListener("click", function(){
     var d = fromDateStr(state.currentDate);
     d.setDate(d.getDate()-1);
@@ -531,6 +609,7 @@
       renderLogView();
     }
   });
+
   /* ---------------- LEDGER VIEW ---------------- */
   function hasAnyEntries(data){
     return Object.keys(data.entries).some(function(date){
@@ -539,6 +618,7 @@
       return HABITS.some(function(h){ return day[h.id] && day[h.id].done; });
     });
   }
+
   function renderHabitChips(){
     var wrap = document.getElementById("habitChips");
     wrap.innerHTML = "";
@@ -553,6 +633,7 @@
       });
       wrap.appendChild(chip);
     });
+
     var ratingChip = document.createElement("button");
     ratingChip.className = "chip wide" + (state.selectedHabit==="__rating__" ? " active":"");
     ratingChip.style.setProperty("--chip-color", "var(--brass)");
@@ -565,6 +646,7 @@
     });
     wrap.appendChild(ratingChip);
   }
+
   function isoWeekNumber(date){
     var d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     var dayNum = (d.getUTCDay() + 6) % 7; // Mon=0..Sun=6
@@ -574,39 +656,49 @@
     firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
     return 1 + Math.round((d - firstThursday) / (7*86400000));
   }
+
   function getEarliestEntryDate(data){
     var keys = Object.keys(data.entries);
     if (!keys.length) return null;
     keys.sort();
     return keys[0];
   }
+
   function renderHeatmap(habitId){
     var data = loadData();
     var isRating = (habitId === "__rating__");
     var habit = isRating ? null : HABITS.filter(function(h){return h.id===habitId;})[0];
+
     var el = document.getElementById("heatmap");
     el.innerHTML = "";
+
     var earliest = getEarliestEntryDate(data);
     if (!earliest){
       el.innerHTML = '<p style="color:var(--muted); font-size:12.5px; margin:4px 2px;">No entries yet.</p>';
       return;
     }
+
     var today = new Date(); today.setHours(0,0,0,0);
     var todayDow = (today.getDay() + 6) % 7; // Mon=0..Sun=6
     var curMonday = new Date(today);
     curMonday.setDate(curMonday.getDate() - todayDow);
+
     var firstDate = fromDateStr(earliest);
     var firstDow = (firstDate.getDay() + 6) % 7;
     var startMonday = new Date(firstDate);
     startMonday.setDate(startMonday.getDate() - firstDow);
+
     var weeksTotal = Math.round((curMonday - startMonday) / (7*86400000)) + 1;
+
     var todayStrVal = todayStr();
     var weekCursor = new Date(startMonday);
+
     for (var w=0; w<weeksTotal; w++){
       var label = document.createElement("div");
       label.className = "heat-week-label";
       label.textContent = pad(isoWeekNumber(weekCursor));
       el.appendChild(label);
+
       for (var i=0;i<7;i++){
         var d = new Date(weekCursor);
         d.setDate(d.getDate()+i);
@@ -641,6 +733,7 @@
       weekCursor.setDate(weekCursor.getDate()+7);
     }
   }
+
   function currentStreak(habitId, data){
     var streak = 0;
     var d = new Date(); d.setHours(0,0,0,0);
@@ -663,6 +756,7 @@
     }
     return { best: best, total: doneDates.length };
   }
+
   function currentRatingStreak(data){
     var streak = 0;
     var d = new Date(); d.setHours(0,0,0,0);
@@ -684,6 +778,7 @@
     }
     return { best: best, total: ratedDates.length };
   }
+
   function renderStats(habitId){
     var data = loadData();
     var isRating = (habitId === "__rating__");
@@ -704,6 +799,7 @@
       n.style.setProperty("--chip-color", color);
     });
   }
+
   function renderChart(){
     var data = loadData();
     var allDateKeys = Object.keys(data.entries).sort();
@@ -718,11 +814,13 @@
     var dates = [];
     var cursor = new Date(firstDate);
     while (cursor <= today){ dates.push(toDateStr(cursor)); cursor.setDate(cursor.getDate()+1); }
+
     var width = Math.max(280, holder.clientWidth || 280);
     var height = 170;
     var padL = 26, padR = 8, padT = 10, padB = 18;
     var plotW = width - padL - padR;
     var plotH = height - padT - padB;
+
     var series = {};
     var running = {};
     HABITS.forEach(function(h){ series[h.id]=[]; running[h.id]=0; });
@@ -738,8 +836,10 @@
       var last = series[h.id][series[h.id].length-1];
       if (last > maxVal) maxVal = last;
     });
+
     function xScale(i){ return padL + (dates.length<=1 ? 0 : (i/(dates.length-1))*plotW); }
     function yScale(v){ return padT + plotH - (v/maxVal)*plotH; }
+
     var svg = '<svg viewBox="0 0 '+width+' '+height+'" width="100%" height="'+height+'" preserveAspectRatio="none">';
     svg += '<line x1="'+padL+'" y1="'+padT+'" x2="'+padL+'" y2="'+(height-padB)+'" stroke="#32414f" stroke-width="1"/>';
     svg += '<line x1="'+padL+'" y1="'+(height-padB)+'" x2="'+(width-padR)+'" y2="'+(height-padB)+'" stroke="#32414f" stroke-width="1"/>';
@@ -751,11 +851,13 @@
     svg += '<text x="'+(padL-4)+'" y="'+(height-padB)+'" font-size="9" fill="#8B97A3" text-anchor="end" font-family="ui-monospace,monospace">0</text>';
     svg += '</svg>';
     holder.innerHTML = svg;
+
     var legend = document.getElementById("chartLegend");
     legend.innerHTML = HABITS.map(function(h){
       return '<span class="legend-item"><span class="dot" style="background:'+h.color+'"></span>'+h.name+' ('+series[h.id][series[h.id].length-1]+')</span>';
     }).join("");
   }
+
   function renderLedgerView(){
     var data = loadData();
     var empty = !hasAnyEntries(data);
@@ -767,7 +869,9 @@
     renderStats(state.selectedHabit);
     renderChart();
   }
+
   document.getElementById("goLogBtn").addEventListener("click", function(){ switchTab("log"); });
+
   /* ---------------- tabs ---------------- */
   function switchTab(tab){
     state.activeTab = tab;
@@ -782,6 +886,7 @@
   [].forEach.call(document.querySelectorAll(".tab-btn"), function(b){
     b.addEventListener("click", function(){ switchTab(b.dataset.tab); });
   });
+
   /* ---------------- export / import ---------------- */
   document.getElementById("exportBtn").addEventListener("click", function(){
     var data = loadData();
@@ -824,6 +929,7 @@
     };
     reader.readAsText(file);
   });
+
   /* ---------------- settings (rename categories) ---------------- */
   function renderSettingsForm(){
     var wrap = document.getElementById("settingsForm");
@@ -867,12 +973,14 @@
     renderLedgerView();
     showToast("Saved");
   });
+
   /* ---------------- service worker ---------------- */
   if ("serviceWorker" in navigator){
     window.addEventListener("load", function(){
       navigator.serviceWorker.register("sw.js").catch(function(){ /* offline support unavailable, app still works */ });
     });
   }
+
   /* ---------------- init ---------------- */
   applyCustomNames();
   renderLogView();
